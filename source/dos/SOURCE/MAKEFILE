@@ -1,0 +1,199 @@
+#ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+#                                                                              Û
+#                        Makefile for The SPANDEX Library                      Û
+#                                                                              Û
+#ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+.ERASE
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                              Conditional Rules                               ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+U_D     = n                    # Debug options?
+U_R     = y                    # Release flag?
+U_P     = y                    # Perspective Correct flag?
+U_Z     = n                    # Z-Buffer flag?
+U_E     = n                    # Evaluation flag?
+DEV_KIT = ..\DEV_KIT           # This is where everything goes
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                                Implicit Rules                                ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+.cpp.obj:
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO  Compiling $[*.cpp
+        $(PP_COMPILE)
+
+.c.obj:
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO  Compiling $[*.c
+        $(COMPILE)
+
+.asm.obj:
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO Assembling $[*.asm
+        $(ASSEMBLE)
+
+.obj.lib:
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO     Making $[*.lib
+        WLIB -Q SPANDEX.LIB @SPANDEX
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO Copying SDK to $(DEV_KIT)
+	COPY *.H $(DEV_KIT) > NUL
+	COPY *.LIB $(DEV_KIT) > NUL
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                          Options and optomizations                           ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+!ifeq U_D y
+AOPTS = /mx /m5 /t /Zi
+DOPTS = /d2
+!else
+AOPTS = /mx /m5 /t
+DOPTS = /oneatx /s
+!endif
+
+!ifeq U_Z y
+BUFFR = /dU_Z
+!else
+BUFFR =
+!endif
+
+!ifeq U_P y
+PERSP = /dU_P
+!else
+PERSP =
+!endif
+
+!ifeq U_R y
+ROPTS = /dU_R
+!else
+ROPTS =
+!endif
+
+!ifeq U_E y
+EOPTS = /dU_E
+!else
+EOPTS =
+!endif
+
+COPTS = /en /fpi /fp5 /5r /w4 /zq /zp
+
+CSETS = $(DOPTS) $(BUFFR) $(PERSP) $(ROPTS) $(EOPTS)
+
+HEADERS = SPANDEX.H SDXDECL.H SDXDEFS.H SDXEXTRN.H SDXMACRO.H SDXTYPES.H SDXINT86.H SDXFIXED.H
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                                Compile Methods                               ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+COMPILE = WCC386 $(COPTS) $(CSETS) $[*
+
+PP_COMPILE = WPP386 $(COPTS) $(CSETS) $[*
+
+ASSEMBLE = TASM $(AOPTS) $[*
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                               LIB Dependencies                               ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+SPANDEX.LIB : MULTIA.OBJ
+SPANDEX.LIB : CLIP.OBJ
+SPANDEX.LIB : CULL.OBJ
+SPANDEX.LIB : DECODER.OBJ
+SPANDEX.LIB : DRAW.OBJ
+SPANDEX.LIB : ENCODER.OBJ
+SPANDEX.LIB : ERRORS.OBJ
+SPANDEX.LIB : FILEIO.OBJ
+SPANDEX.LIB : GLOBALS.OBJ
+SPANDEX.LIB : IMAGE.OBJ
+SPANDEX.LIB : INT.OBJ
+SPANDEX.LIB : INT86.OBJ
+SPANDEX.LIB : SPANDEX.OBJ
+SPANDEX.LIB : SPANDEX.LBC
+SPANDEX.LIB : LIGHTS.OBJ
+SPANDEX.LIB : LOADIMG.OBJ
+SPANDEX.LIB : MAPS.OBJ
+SPANDEX.LIB : MATERIAL.OBJ
+SPANDEX.LIB : MATH.OBJ
+SPANDEX.LIB : MEM.OBJ
+SPANDEX.LIB : MOUSE.OBJ
+SPANDEX.LIB : MULTI.OBJ
+SPANDEX.LIB : OBJECTS.OBJ
+SPANDEX.LIB : OCTREE.OBJ
+SPANDEX.LIB : ORIENT.OBJ
+SPANDEX.LIB : PALETTE.OBJ
+SPANDEX.LIB : POINTS.OBJ
+SPANDEX.LIB : POLYS.OBJ
+SPANDEX.LIB : PRIMS.OBJ
+SPANDEX.LIB : PROJECT.OBJ
+SPANDEX.LIB : READUSD.OBJ
+SPANDEX.LIB : RENDER.OBJ
+SPANDEX.LIB : SAVEIMG.OBJ
+SPANDEX.LIB : SHADE.OBJ
+SPANDEX.LIB : SORT.OBJ
+SPANDEX.LIB : STUFF.OBJ
+SPANDEX.LIB : TRANS.OBJ
+SPANDEX.LIB : TRIS.OBJ
+SPANDEX.LIB : VERTICES.OBJ
+SPANDEX.LIB : VSCREEN.OBJ
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                             Module Dependencies                              ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+MULTIA.OBJ   : MULTIA.ASM   MAKEFILE
+CLIP.OBJ     : CLIP.C       MAKEFILE $(HEADERS)
+CULL.OBJ     : CULL.C       MAKEFILE $(HEADERS)
+DECODER.OBJ  : DECODER.C    MAKEFILE $(HEADERS)
+DRAW.OBJ     : DRAW.C       MAKEFILE $(HEADERS)
+ENCODER.OBJ  : ENCODER.C    MAKEFILE $(HEADERS)
+ERRORS.OBJ   : ERRORS.C     MAKEFILE $(HEADERS)
+FILEIO.OBJ   : FILEIO.C     MAKEFILE $(HEADERS)
+GLOBALS.OBJ  : GLOBALS.C    MAKEFILE $(HEADERS)
+IMAGE.OBJ    : IMAGE.C      MAKEFILE $(HEADERS)
+INT.OBJ      : INT.C        MAKEFILE $(HEADERS)
+INT86.OBJ    : INT86.C      MAKEFILE $(HEADERS)
+SPANDEX.OBJ  : SPANDEX.C    MAKEFILE $(HEADERS)
+LIGHTS.OBJ   : LIGHTS.C     MAKEFILE $(HEADERS)
+LOADIMG.OBJ  : LOADIMG.C    MAKEFILE $(HEADERS)
+MAPS.OBJ     : MAPS.C       MAKEFILE $(HEADERS)
+MATERIAL.OBJ : MATERIAL.C   MAKEFILE $(HEADERS)
+MATH.OBJ     : MATH.C       MAKEFILE $(HEADERS)
+MEM.OBJ      : MEM.C        MAKEFILE $(HEADERS)
+MOUSE.OBJ    : MOUSE.C      MAKEFILE $(HEADERS)
+MULTI.OBJ    : MULTI.C      MAKEFILE $(HEADERS)
+OBJECTS.OBJ  : OBJECTS.C    MAKEFILE $(HEADERS)
+OCTREE.OBJ   : OCTREE.C     MAKEFILE $(HEADERS)
+ORIENT.OBJ   : ORIENT.C     MAKEFILE $(HEADERS)
+PALETTE.OBJ  : PALETTE.C    MAKEFILE $(HEADERS)
+POINTS.OBJ   : POINTS.C     MAKEFILE $(HEADERS)
+POLYS.OBJ    : POLYS.C      MAKEFILE $(HEADERS) AFFINE.TRI PERSP.TRI
+PRIMS.OBJ    : PRIMS.C      MAKEFILE $(HEADERS)
+PROJECT.OBJ  : PROJECT.C    MAKEFILE $(HEADERS)
+READUSD.OBJ  : READUSD.C    MAKEFILE $(HEADERS)
+RENDER.OBJ   : RENDER.C     MAKEFILE $(HEADERS)
+SAVEIMG.OBJ  : SAVEIMG.C    MAKEFILE $(HEADERS)
+SHADE.OBJ    : SHADE.C      MAKEFILE $(HEADERS)
+SORT.OBJ     : SORT.C       MAKEFILE $(HEADERS)
+STUFF.OBJ    : STUFF.C      MAKEFILE $(HEADERS)
+TRANS.OBJ    : TRANS.C      MAKEFILE $(HEADERS)
+TRIS.OBJ     : TRIS.C       MAKEFILE $(HEADERS)
+VERTICES.OBJ : VERTICES.C   MAKEFILE $(HEADERS)
+VSCREEN.OBJ  : VSCREEN.C    MAKEFILE $(HEADERS)

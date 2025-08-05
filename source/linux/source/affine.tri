@@ -1,0 +1,478 @@
+// Originally released under a custom license.
+// This historical re-release is provided under the MIT License.
+// See the LICENSE file in the repo root for details.
+//
+// https://github.com/nettlep
+
+/*----------------------------------------------------------------------------
+  -                                                                          -
+  -   Copyright (c) 1997 Paul D. Nettle.  All Rights Reserved.               -
+  -                                                                          -
+  -   [AFFINE.TRI  ] - Affine Renderers                                      -
+  -                                                                          -
+  ----------------------------------------------------------------------------*/
+
+{
+//*****************************************************************************
+//* THESE VARIABLES ARE USED IN THE INNER LOOPS, SO THEY GO FIRST (FOR SPEED) *
+//*****************************************************************************
+
+#if defined (__INTERP_UV)
+INT   *pMap;
+#endif
+
+UCHR  *pScr;
+
+#if defined (__LAMBERT) || defined (__GOURAUD)
+UCHR  *pPal;
+#endif
+
+#if defined (__TRANSPARENT)
+UCHR  *OMap;
+#endif
+
+#if defined (__PHONG)
+INT   *pPhong;
+#endif
+
+#if defined (__BUMP)
+INT   *pBump;
+UCHR  cTemp;
+#endif
+
+#if defined (__SOLID)
+INT   iColor;
+#endif
+
+#if defined (__INTERP_G)
+HILO  CurG;
+FXD   fDeltaG;
+#endif
+
+#if defined (__INTERP_ST)
+HILO  CurS, CurT;
+FXD   fDeltaS, fDeltaT;
+#endif
+
+#if defined (__INTERP_UV)
+HILO  CurU, CurV;
+FXD   fDeltaU, fDeltaV;
+WRD   UMask, VMask;
+#endif
+
+//*****************************************************************************
+//*       THESE VARIABLES ARE USED IN THE OUTER LOOPS, SO THEY GO NEXT        *
+//*****************************************************************************
+
+INT   iPitch, iCount, iTopHeight, iBotHeight;
+UCHR  *pScanStart;
+FLT   fTemp;
+FXD   fShortDX, fLongDX, fShortX, fLongX, fxTemp;
+
+#if defined (__INTERP_G)
+FXD   fShortDG, fLongDG, fShortG, fLongG;
+#endif
+
+#if defined (__INTERP_ST)
+FXD   fShortDS, fLongDS, fShortS, fLongS;
+FXD   fShortDT, fLongDT, fShortT, fLongT;
+#endif
+
+#if defined (__INTERP_UV)
+FXD   fShortDU, fLongDU, fShortU, fLongU;
+FXD   fShortDV, fLongDV, fShortV, fLongV;
+#endif
+
+//*****************************************************************************
+//*         THESE VARIABLES ARE USED IN THE NO LOOPS, SO THEY GO LAST         *
+//*****************************************************************************
+
+#if defined (__INTERP_G)
+FXD   fxGA, fxGB, fxGC;
+FLT   fGA, fGB, fGC;
+#endif
+
+#if defined (__INTERP_ST)
+P2D   *SA, *SB, *SC;
+#endif
+
+#if defined (__INTERP_UV)
+P2D   *TA, *TB, *TC;
+#endif
+
+FXD   fWSpan, fTopHeight;
+P2D   *PA, *PB, *PC, *pTemp;
+
+   Assert( Tri );
+   #if defined (__BUMP)
+   Assert( Tri->Material->BumpMap );
+   #endif
+
+   PA = &Tri->V1->Scr;
+   PB = &Tri->V2->Scr;
+   PC = &Tri->V3->Scr;
+
+   #if defined (__INTERP_ST)
+   SA = &Tri->V1->Env;
+   SB = &Tri->V2->Env;
+   SC = &Tri->V3->Env;
+   #endif
+
+   #if defined (__INTERP_UV)
+   TA = &Tri->T1;
+   TB = &Tri->T2;
+   TC = &Tri->T3;
+   #endif
+
+   #if defined (__INTERP_G)
+   fGA = Tri->V1->Int;
+   fGB = Tri->V2->Int;
+   fGC = Tri->V3->Int;
+   #endif
+
+   if (PA->fy > PB->fy)
+   {
+      SWAP(PA, PB, pTemp);
+
+      #if defined (__INTERP_UV)
+      SWAP(TA, TB, pTemp);
+      #endif
+
+      #if defined (__INTERP_ST)
+      SWAP(SA, SB, pTemp);
+      #endif
+
+      #if defined (__INTERP_G)
+      SWAP(fGA, fGB, fTemp);
+      #endif
+   }
+   if (PB->fy > PC->fy)
+   {
+      SWAP(PB, PC, pTemp);
+
+      #if defined (__INTERP_UV)
+      SWAP(TB, TC, pTemp);
+      #endif
+
+      #if defined (__INTERP_ST)
+      SWAP(SB, SC, pTemp);
+      #endif
+
+      #if defined (__INTERP_G)
+      SWAP(fGB, fGC, fTemp);
+      #endif
+   }
+   if (PA->fy > PB->fy)
+   {
+      SWAP(PA, PB, pTemp);
+
+      #if defined (__INTERP_UV)
+      SWAP(TA, TB, pTemp);
+      #endif
+
+      #if defined (__INTERP_ST)
+      SWAP(SA, SB, pTemp);
+      #endif
+
+      #if defined (__INTERP_G)
+      SWAP(fGA, fGB, fTemp);
+      #endif
+   }
+
+   if(FixedWhole(PC->fy) == FixedWhole(PA->fy)) return;
+
+   #if defined (__INTERP_G)
+   fxGA = FLT_TO_FXD(fGA);
+   fxGB = FLT_TO_FXD(fGB);
+   fxGC = FLT_TO_FXD(fGC);
+   #endif
+
+   iTopHeight = FXD_TO_INT(PB->fy) - FXD_TO_INT(PA->fy);
+   iBotHeight = FXD_TO_INT(PC->fy) - FXD_TO_INT(PB->fy);
+   pScanStart = &SPDXGlobals.CurrentVScreen.DrawScreen[SPDXGlobals.CurrentVScreen.STab[FXD_TO_INT(PA->fy)]];
+   iPitch     = SPDXGlobals.CurrentVScreen.iResX;
+
+   #if defined (__INTERP_UV)
+   pMap       = Tri->Material->Map->STab;
+   UMask      = Tri->Material->Map->UMask;
+   VMask      = Tri->Material->Map->VMask;
+   Assert(pMap);
+   #endif
+
+   #if defined (__PHONG)
+   pPhong     = SPDXGlobals.PhongTab;
+   #endif
+
+   #if defined (__BUMP)
+   pBump      = Tri->Material->BumpMap->STab;
+   #endif
+
+   #if defined (__LAMBERT)
+   pPal       = &SPDXGlobals.PalTab[FLT_TO_INT(Tri->Int)<<8];
+   #endif
+
+   #if defined (__GOURAUD) && defined (__INTERP_UV)
+   pPal       = SPDXGlobals.PalTab;
+   #endif
+
+   #if defined (__GOURAUD) && !defined (__INTERP_UV)
+   pPal       = &SPDXGlobals.PalTab[FLT_TO_INT(Tri->Material->Color)];
+   #endif
+
+   #if defined (__SOLID)
+   iColor     = FLT_TO_INT(Tri->Material->Color);
+   #endif
+
+   #if defined (__TRANSPARENT)
+   OMap       = SPDXGlobals.TransTab;
+   Assert( OMap );
+   #endif
+
+   fTemp      = 1.0 / (PC->y - PA->y);
+
+   #if defined (__INTERP_G)
+   fLongDG    = FLT_TO_FXD((fGC   - fGA)   * fTemp);
+   #endif
+
+   #if defined (__INTERP_ST)
+   fLongDS    = FLT_TO_FXD((SC->x - SA->x) * fTemp);
+   fLongDT    = FLT_TO_FXD((SC->y - SA->y) * fTemp);
+   #endif
+
+   #if defined (__INTERP_UV)
+   fLongDU    = FLT_TO_FXD((TC->x - TA->x) * fTemp);
+   fLongDV    = FLT_TO_FXD((TC->y - TA->y) * fTemp);
+   #endif
+
+   fLongDX    = FLT_TO_FXD((PC->x - PA->x) * fTemp);
+
+   fxTemp     = FXD_ONE - FixedFrac(PA->fy);
+
+   #if defined (__INTERP_G)
+   fLongG     = fxGA   + FixedMul(fLongDG, fxTemp);
+   #endif
+
+   #if defined (__INTERP_ST)
+   fLongS     = SA->fx + FixedMul(fLongDS, fxTemp);
+   fLongT     = SA->fy + FixedMul(fLongDT, fxTemp);
+   #endif
+
+   #if defined (__INTERP_UV)
+   fLongU     = TA->fx + FixedMul(fLongDU, fxTemp);
+   fLongV     = TA->fy + FixedMul(fLongDV, fxTemp);
+   #endif
+
+   fLongX     = PA->fx + FixedMul(fLongDX, fxTemp);
+
+   if (iTopHeight)
+   {
+      fTopHeight = PB->fy - PA->fy;
+      fTemp      = 1.0 / (PB->y - PA->y);
+
+      #if defined (__INTERP_G)
+      fShortDG   = FLT_TO_FXD((fGB   - fGA)   * fTemp);
+      #endif
+
+      #if defined (__INTERP_ST)
+      fShortDS   = FLT_TO_FXD((SB->x - SA->x) * fTemp);
+      fShortDT   = FLT_TO_FXD((SB->y - SA->y) * fTemp);
+      #endif
+
+      #if defined (__INTERP_UV)
+      fShortDU   = FLT_TO_FXD((TB->x - TA->x) * fTemp);
+      fShortDV   = FLT_TO_FXD((TB->y - TA->y) * fTemp);
+      #endif
+
+      fShortDX   = FLT_TO_FXD((PB->x - PA->x) * fTemp);
+
+      fxTemp     = FXD_ONE - FixedFrac(PA->fy);
+
+      #if defined (__INTERP_G)
+      fShortG    = fxGA   + FixedMul(fShortDG, fxTemp);
+      #endif
+
+      #if defined (__INTERP_ST)
+      fShortS    = SA->fx + FixedMul(fShortDS, fxTemp);
+      fShortT    = SA->fy + FixedMul(fShortDT, fxTemp);
+      #endif
+
+      #if defined (__INTERP_UV)
+      fShortU    = TA->fx + FixedMul(fShortDU, fxTemp);
+      fShortV    = TA->fy + FixedMul(fShortDV, fxTemp);
+      #endif
+
+      fShortX    = PA->fx + FixedMul(fShortDX, fxTemp);
+
+      if (fShortDX < fLongDX)
+      {
+         fWSpan  = PA->fx + FixedMul(fLongDX, fTopHeight) - PB->fx;
+         if (fWSpan < DIVIDE_SAFE) fWSpan = FXD_ONE;
+
+         #if defined (__INTERP_G)
+         fDeltaG = FixedDiv(fxGA  +FixedMul(fLongDG,fTopHeight)-fxGB,  fWSpan);
+         #endif
+
+         #if defined (__INTERP_ST)
+         fDeltaS = FixedDiv(SA->fx+FixedMul(fLongDS,fTopHeight)-SB->fx,fWSpan);
+         fDeltaT = FixedDiv(SA->fy+FixedMul(fLongDT,fTopHeight)-SB->fy,fWSpan);
+         #endif
+
+         #if defined (__INTERP_UV)
+         fDeltaU = FixedDiv(TA->fx+FixedMul(fLongDU,fTopHeight)-TB->fx,fWSpan);
+         fDeltaV = FixedDiv(TA->fy+FixedMul(fLongDV,fTopHeight)-TB->fy,fWSpan);
+         #endif
+
+         INNER_LOOP(iTopHeight, fShort, fLong);
+      }
+      else
+      {
+         fWSpan  = PB->fx - (PA->fx + FixedMul(fLongDX, fTopHeight));
+         if (fWSpan < DIVIDE_SAFE) fWSpan = FXD_ONE;
+
+         #if defined (__INTERP_G)
+         fDeltaG = FixedDiv(fxGB  -(fxGA  +FixedMul(fLongDG,fTopHeight)),fWSpan);
+         #endif
+
+         #if defined (__INTERP_ST)
+         fDeltaS = FixedDiv(SB->fx-(SA->fx+FixedMul(fLongDS,fTopHeight)),fWSpan);
+         fDeltaT = FixedDiv(SB->fy-(SA->fy+FixedMul(fLongDT,fTopHeight)),fWSpan);
+         #endif
+
+         #if defined (__INTERP_UV)
+         fDeltaU = FixedDiv(TB->fx-(TA->fx+FixedMul(fLongDU,fTopHeight)),fWSpan);
+         fDeltaV = FixedDiv(TB->fy-(TA->fy+FixedMul(fLongDV,fTopHeight)),fWSpan);
+         #endif
+
+         INNER_LOOP(iTopHeight, fLong, fShort);
+      }
+
+      if (!iBotHeight) return;
+
+      fTemp    = 1.0 / (PC->y - PB->y);
+
+      #if defined (__INTERP_G)
+      fShortDG = FLT_TO_FXD((fGC   - fGB)   * fTemp);
+      #endif
+
+      #if defined (__INTERP_ST)
+      fShortDS = FLT_TO_FXD((SC->x - SB->x) * fTemp);
+      fShortDT = FLT_TO_FXD((SC->y - SB->y) * fTemp);
+      #endif
+
+      #if defined (__INTERP_UV)
+      fShortDU = FLT_TO_FXD((TC->x - TB->x) * fTemp);
+      fShortDV = FLT_TO_FXD((TC->y - TB->y) * fTemp);
+      #endif
+
+      fShortDX = FLT_TO_FXD((PC->x - PB->x) * fTemp);
+
+      fxTemp   = FXD_ONE - FixedFrac(PB->fy);
+
+      #if defined (__INTERP_G)
+      fShortG  = fxGB   + FixedMul(fShortDG, fxTemp);
+      #endif
+
+      #if defined (__INTERP_ST)
+      fShortS  = SB->fx + FixedMul(fShortDS, fxTemp);
+      fShortT  = SB->fy + FixedMul(fShortDT, fxTemp);
+      #endif
+
+      #if defined (__INTERP_UV)
+      fShortU  = TB->fx + FixedMul(fShortDU, fxTemp);
+      fShortV  = TB->fy + FixedMul(fShortDV, fxTemp);
+      #endif
+
+      fShortX  = PB->fx + FixedMul(fShortDX, fxTemp);
+   }
+   else
+   {
+      fTemp    = 1.0 / (PC->y - PB->y);
+
+      #if defined (__INTERP_G)
+      fShortDG = FLT_TO_FXD((fGC   - fGB)   * fTemp);
+      #endif
+
+      #if defined (__INTERP_ST)
+      fShortDS = FLT_TO_FXD((SC->x - SB->x) * fTemp);
+      fShortDT = FLT_TO_FXD((SC->y - SB->y) * fTemp);
+      #endif
+
+      #if defined (__INTERP_UV)
+      fShortDU = FLT_TO_FXD((TC->x - TB->x) * fTemp);
+      fShortDV = FLT_TO_FXD((TC->y - TB->y) * fTemp);
+      #endif
+
+      fShortDX = FLT_TO_FXD((PC->x - PB->x) * fTemp);
+
+      fxTemp   = FXD_ONE - FixedFrac(PB->fy);
+
+      #if defined (__INTERP_G)
+      fShortG  = fxGB   + FixedMul(fShortDG, fxTemp);
+      #endif
+
+      #if defined (__INTERP_ST)
+      fShortS  = SB->fx + FixedMul(fShortDS, fxTemp);
+      fShortT  = SB->fy + FixedMul(fShortDT, fxTemp);
+      #endif
+
+      #if defined (__INTERP_UV)
+      fShortU  = TB->fx + FixedMul(fShortDU, fxTemp);
+      fShortV  = TB->fy + FixedMul(fShortDV, fxTemp);
+      #endif
+
+      fShortX  = PB->fx + FixedMul(fShortDX, fxTemp);
+
+      if (fLongX > fShortX)
+      {
+         fWSpan  = fLongX - fShortX;
+         if (fWSpan < DIVIDE_SAFE) fWSpan = FXD_ONE;
+
+         #if defined (__INTERP_G)
+         fDeltaG = FixedDiv(fLongG - fShortG, fWSpan);
+         #endif
+
+         #if defined (__INTERP_ST)
+         fDeltaS = FixedDiv(fLongS - fShortS, fWSpan);
+         fDeltaT = FixedDiv(fLongT - fShortT, fWSpan);
+         #endif
+
+         #if defined (__INTERP_UV)
+         fDeltaU = FixedDiv(fLongU - fShortU, fWSpan);
+         fDeltaV = FixedDiv(fLongV - fShortV, fWSpan);
+         #endif
+      }
+      else
+      {
+         fWSpan  = fShortX - fLongX;
+         if (fWSpan < DIVIDE_SAFE) fWSpan = FXD_ONE;
+
+         #if defined (__INTERP_G)
+         fDeltaG = FixedDiv(fShortG - fLongG, fWSpan);
+         #endif
+
+         #if defined (__INTERP_ST)
+         fDeltaS = FixedDiv(fShortS - fLongS, fWSpan);
+         fDeltaT = FixedDiv(fShortT - fLongT, fWSpan);
+         #endif
+
+         #if defined (__INTERP_UV)
+         fDeltaU = FixedDiv(fShortU - fLongU, fWSpan);
+         fDeltaV = FixedDiv(fShortV - fLongV, fWSpan);
+         #endif
+      }
+   }
+
+   if (fShortX < fLongX)
+   {
+      INNER_LOOP(iBotHeight, fShort, fLong);
+   }
+   else
+   {
+      INNER_LOOP(iBotHeight, fLong, fShort);
+   }
+}
+
+/*----------------------------------------------------------------------------
+  -   [AFFINE.TRI  ] - End Of File                                           -
+  ----------------------------------------------------------------------------*/
+

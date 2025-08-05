@@ -1,0 +1,479 @@
+// Originally released under a custom license.
+// This historical re-release is provided under the MIT License.
+// See the LICENSE file in the repo root for details.
+//
+// https://github.com/nettlep
+
+/*±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+  ±                                                                          ±
+  ±   Copyright (c) 1997 Paul D. Nettle.  All Rights Reserved.               ±
+  ±                                                                          ±
+  ±   [PERSP.TRI   ] - Perspective Correct Renderers                         ±
+  ±                                                                          ±
+  ±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±*/
+
+{
+//*****************************************************************************
+//* THESE VARIABLES ARE USED IN THE INNER LOOPS, SO THEY GO FIRST (FOR SPEED) *
+//*****************************************************************************
+
+INT   *pMap, iTemp;
+CHR   *pScr;
+
+#if defined (__LAMBERT) || defined (__GOURAUD)
+CHR   *pPal;
+#endif
+
+#if defined (__PHONG)
+INT   *pPhong;
+#endif
+
+#if defined (__SOLID)
+INT   iColor;
+#endif
+
+#if defined (__INTERP_UV)
+FLT   fCurU, fCurV;
+HILO  ULeft, VLeft;
+WRD   UMask, VMask;
+FXD   URight, VRight, DeltaU, DeltaV;
+UV    *pUTemp;
+#endif
+
+#if defined (__INTERP_G)
+HILO  CurG;
+FXD   DeltaG;
+#endif
+
+#if defined (__INTERP_ST)
+HILO  CurS, CurT;
+FXD   DeltaS, DeltaT;
+#endif
+
+FLT   fTemp, fCurZ;
+
+#if defined (__BUMP)
+INT   *pBump;
+CHR   cTemp;
+#endif
+
+#if defined (__TRANSPARENT)
+CHR   *OMap;
+#endif
+
+//*****************************************************************************
+//*       THESE VARIABLES ARE USED IN THE OUTER LOOPS, SO THEY GO NEXT        *
+//*****************************************************************************
+
+INT   iPitch, iCount, iTopHeight, iBotHeight;
+CHR   *pScanStart;
+
+FLT   fShortDZ, fLongDZ, fShortZ, fLongZ, fDeltaZ;
+FLT   fShortDX, fLongDX, fShortX, fLongX;
+
+#if defined (__INTERP_G)
+FLT   fShortDG, fLongDG, fShortG, fLongG;
+#endif
+
+#if defined (__INTERP_UV)
+FLT   fDeltaUaff, fDeltaVaff, fDeltaZaff;
+FLT   fShortDU, fLongDU, fShortU, fLongU, fDeltaU;
+FLT   fShortDV, fLongDV, fShortV, fLongV, fDeltaV;
+#endif
+
+#if defined (__INTERP_ST)
+FLT   fShortDS, fLongDS, fShortS, fLongS, fDeltaS;
+FLT   fShortDT, fLongDT, fShortT, fLongT, fDeltaT;
+#endif
+
+#if defined (__INTERP_G)
+FLT   fGA, fGB, fGC;
+#endif
+
+#if defined (__INTERP_ST)
+P2D   *SA, *SB, *SC;
+#endif
+
+#if defined (__INTERP_UV)
+UV    *TA, *TB, *TC;
+#endif
+
+FLT   fWSpan, fTopHeight, fPAz,  fPBz,  fPCz, fFracA, fFracB;
+P2D   *PA, *PB, *PC, *pTemp;
+
+   Assert( Tri );
+   #if defined (__BUMP)
+   Assert( Tri->Material->BumpMap );
+   #endif
+
+   PA = &Tri->V1->Scr;
+   PB = &Tri->V2->Scr;
+   PC = &Tri->V3->Scr;
+
+   fPAz = Tri->V1->OneOverZ;
+   fPBz = Tri->V2->OneOverZ;
+   fPCz = Tri->V3->OneOverZ;
+
+   #if defined (__INTERP_ST)
+   SA = &Tri->V1->Env;
+   SB = &Tri->V2->Env;
+   SC = &Tri->V3->Env;
+   #endif
+
+   #if defined (__INTERP_UV)
+   TA = &Tri->T1;
+   TB = &Tri->T2;
+   TC = &Tri->T3;
+   #endif
+
+   #if defined (__INTERP_G)
+   fGA = Tri->V1->Int;
+   fGB = Tri->V2->Int;
+   fGC = Tri->V3->Int;
+   #endif
+
+   if (PA->fy > PB->fy)
+   {
+      SWAP(PA,   PB,   pTemp);
+      SWAP(fPAz, fPBz, fTemp);
+
+      #if defined (__INTERP_UV)
+      SWAP(TA, TB, pUTemp);
+      #endif
+
+      #if defined (__INTERP_ST)
+      SWAP(SA, SB, pTemp);
+      #endif
+
+      #if defined (__INTERP_G)
+      SWAP(fGA, fGB, fTemp);
+      #endif
+   }
+   if (PB->fy > PC->fy)
+   {
+      SWAP(PB,   PC,   pTemp);
+      SWAP(fPBz, fPCz, fTemp);
+
+      #if defined (__INTERP_UV)
+      SWAP(TB, TC, pUTemp);
+      #endif
+
+      #if defined (__INTERP_ST)
+      SWAP(SB, SC, pTemp);
+      #endif
+
+      #if defined (__INTERP_G)
+      SWAP(fGB, fGC, fTemp);
+      #endif
+   }
+   if (PA->fy > PB->fy)
+   {
+      SWAP(PA,   PB,   pTemp);
+      SWAP(fPAz, fPBz, fTemp);
+
+      #if defined (__INTERP_UV)
+      SWAP(TA, TB, pUTemp);
+      #endif
+
+      #if defined (__INTERP_ST)
+      SWAP(SA, SB, pTemp);
+      #endif
+
+      #if defined (__INTERP_G)
+      SWAP(fGA, fGB, fTemp);
+      #endif
+   }
+
+   if(FixedWhole(PC->fy) == FixedWhole(PA->fy)) return;
+
+   iTopHeight = FXD_TO_INT(PB->fy) - FXD_TO_INT(PA->fy);
+   iBotHeight = FXD_TO_INT(PC->fy) - FXD_TO_INT(PB->fy);
+   pScanStart = &SPDXGlobals.CurrentVScreen.DrawScreen[SPDXGlobals.CurrentVScreen.STab[FXD_TO_INT(PA->fy)]];
+   iPitch     = SPDXGlobals.CurrentVScreen.iResX;
+   pMap       = Tri->Material->Map->STab;
+   UMask      = Tri->Material->Map->UMask;
+   VMask      = Tri->Material->Map->VMask;
+
+   #if defined (__PHONG)
+   pPhong     = SPDXGlobals.PhongTab;
+   #endif
+
+   #if defined (__BUMP)
+   pBump      = Tri->Material->BumpMap->STab;
+   #endif
+
+   #if defined (__LAMBERT)
+   pPal       = &SPDXGlobals.PalTab[FLT_TO_INT(Tri->Int)<<8];
+   #endif
+
+   #if defined (__GOURAUD) && defined (__INTERP_UV)
+   pPal       = SPDXGlobals.PalTab;
+   #endif
+
+   #if defined (__GOURAUD) && !defined (__INTERP_UV)
+   pPal       = &SPDXGlobals.PalTab[FLT_TO_INT(Tri->Material->Color)];
+   #endif
+
+   #if defined (__SOLID)
+   iColor     = FLT_TO_INT(Tri->Material->Color);
+   #endif
+
+   #if defined (__TRANSPARENT)
+   OMap       = SPDXGlobals.TransTab;
+   Assert( OMap );
+   #endif
+
+   fFracA     = 1.0 - FLT_FRAC(PA->y);
+   fFracB     = 1.0 - FLT_FRAC(PB->y);
+   fTemp      = 1.0 / (PC->y - PA->y);
+
+   #if defined (__INTERP_G)
+   fLongDG    = (fGC   - fGA)   * fTemp;
+   #endif
+
+   #if defined (__INTERP_ST)
+   fLongDS    = (SC->x - SA->x) * fTemp;
+   fLongDT    = (SC->y - SA->y) * fTemp;
+   #endif
+
+   #if defined (__INTERP_UV)
+   fLongDU    = (TC->u - TA->u) * fTemp;
+   fLongDV    = (TC->v - TA->v) * fTemp;
+   #endif
+
+   fLongDX    = (PC->x - PA->x) * fTemp;
+   fLongDZ    = (fPCz  - fPAz)  * fTemp;
+
+   #if defined (__INTERP_G)
+   fLongG     = fGA   + fLongDG * fFracA;
+   #endif
+
+   #if defined (__INTERP_ST)
+   fLongS     = SA->x + fLongDS * fFracA;
+   fLongT     = SA->y + fLongDT * fFracA;
+   #endif
+
+   #if defined (__INTERP_UV)
+   fLongU     = TA->u + fLongDU * fFracA;
+   fLongV     = TA->v + fLongDV * fFracA;
+   #endif
+
+   fLongX     = PA->x + fLongDX * fFracA;
+   fLongZ     = fPAz  + fLongDZ * fFracA;
+
+   if (iTopHeight)
+   {
+      fTopHeight = PB->y - PA->y;
+      fTemp      = 1.0 / fTopHeight;
+
+      #if defined (__INTERP_G)
+      fShortDG   = (fGB   - fGA)   * fTemp;
+      #endif
+
+      #if defined (__INTERP_ST)
+      fShortDS   = (SB->x - SA->x) * fTemp;
+      fShortDT   = (SB->y - SA->y) * fTemp;
+      #endif
+
+      #if defined (__INTERP_UV)
+      fShortDU   = (TB->u - TA->u) * fTemp;
+      fShortDV   = (TB->v - TA->v) * fTemp;
+      #endif
+
+      fShortDX   = (PB->x - PA->x) * fTemp;
+      fShortDZ   = (fPBz  - fPAz)  * fTemp;
+
+      #if defined (__INTERP_G)
+      fShortG    = fGA   + fShortDG * fFracA;
+      #endif
+
+      #if defined (__INTERP_ST)
+      fShortS    = SA->x + fShortDS * fFracA;
+      fShortT    = SA->y + fShortDT * fFracA;
+      #endif
+
+      #if defined (__INTERP_UV)
+      fShortU    = TA->u + fShortDU * fFracA;
+      fShortV    = TA->v + fShortDV * fFracA;
+      #endif
+
+      fShortX    = PA->x + fShortDX * fFracA;
+      fShortZ    = fPAz  + fShortDZ * fFracA;
+
+      if (fShortDX < fLongDX)
+      {
+         fWSpan  = 1.0 / (PA->x + fLongDX * fTopHeight - PB->x);
+
+         #if defined (__INTERP_G)
+         DeltaG  = FLT_TO_FXD((fGA  +fLongDG*fTopHeight-fGB)*fWSpan);
+         #endif
+
+         #if defined (__INTERP_ST)
+         fDeltaS = (SA->x+fLongDS*fTopHeight-SB->x)*fWSpan;
+         fDeltaT = (SA->y+fLongDT*fTopHeight-SB->y)*fWSpan;
+         #endif
+
+         #if defined (__INTERP_UV)
+         fDeltaU = (TA->u+fLongDU*fTopHeight-TB->u)*fWSpan;
+         fDeltaV = (TA->v+fLongDV*fTopHeight-TB->v)*fWSpan;
+         #endif
+
+         fDeltaZ = (fPAz +fLongDZ*fTopHeight-fPBz )*fWSpan;
+
+         INNER_LOOP(iTopHeight, fShort, fLong);
+      }
+      else
+      {
+         fWSpan  = 1.0 / (PB->x - (PA->x + fLongDX * fTopHeight));
+
+         #if defined (__INTERP_G)
+         DeltaG  = FLT_TO_FXD((fGB  -(fGA  +fLongDG*fTopHeight))*fWSpan);
+         #endif
+
+         #if defined (__INTERP_ST)
+         fDeltaS = (SB->x-(SA->x+fLongDS*fTopHeight))*fWSpan;
+         fDeltaT = (SB->y-(SA->y+fLongDT*fTopHeight))*fWSpan;
+         #endif
+
+         #if defined (__INTERP_UV)
+         fDeltaU = (TB->u-(TA->u+fLongDU*fTopHeight))*fWSpan;
+         fDeltaV = (TB->v-(TA->v+fLongDV*fTopHeight))*fWSpan;
+         #endif
+
+         fDeltaZ = (fPBz -(fPAz +fLongDZ*fTopHeight))*fWSpan;
+
+         INNER_LOOP(iTopHeight, fLong, fShort);
+      }
+
+      if (!iBotHeight) return;
+
+      fTemp    = 1.0 / (PC->y - PB->y);
+
+      #if defined (__INTERP_G)
+      fShortDG = (fGC   - fGB)   * fTemp;
+      #endif
+
+      #if defined (__INTERP_ST)
+      fShortDS = (SC->x - SB->x) * fTemp;
+      fShortDT = (SC->y - SB->y) * fTemp;
+      #endif
+
+      #if defined (__INTERP_UV)
+      fShortDU = (TC->u - TB->u) * fTemp;
+      fShortDV = (TC->v - TB->v) * fTemp;
+      #endif
+
+      fShortDX = (PC->x - PB->x) * fTemp;
+      fShortDZ = (fPCz  - fPBz)  * fTemp;
+
+      #if defined (__INTERP_G)
+      fShortG  = fGB   + fShortDG * fFracB;
+      #endif
+
+      #if defined (__INTERP_ST)
+      fShortS  = SB->x + fShortDS * fFracB;
+      fShortT  = SB->y + fShortDT * fFracB;
+      #endif
+
+      #if defined (__INTERP_UV)
+      fShortU  = TB->u + fShortDU * fFracB;
+      fShortV  = TB->v + fShortDV * fFracB;
+      #endif
+
+      fShortX  = PB->x + fShortDX * fFracB;
+      fShortZ  = fPBz  + fShortDZ * fFracB;
+
+   }
+   else
+   {
+      fTemp    = 1.0 / (PC->y - PB->y);
+
+      #if defined (__INTERP_G)
+      fShortDG = (fGC   - fGB)   * fTemp;
+      #endif
+
+      #if defined (__INTERP_ST)
+      fShortDS = (SC->x - SB->x) * fTemp;
+      fShortDT = (SC->y - SB->y) * fTemp;
+      #endif
+
+      #if defined (__INTERP_UV)
+      fShortDU = (TC->u - TB->u) * fTemp;
+      fShortDV = (TC->v - TB->v) * fTemp;
+      #endif
+
+      fShortDX = (PC->x - PB->x) * fTemp;
+      fShortDZ = (fPCz  - fPBz)  * fTemp;
+
+      #if defined (__INTERP_G)
+      fShortG  = fGB   + fShortDG * fFracB;
+      #endif
+
+      #if defined (__INTERP_ST)
+      fShortS  = SB->x + fShortDS * fFracB;
+      fShortT  = SB->y + fShortDT * fFracB;
+      #endif
+
+      #if defined (__INTERP_UV)
+      fShortU  = TB->u + fShortDU * fFracB;
+      fShortV  = TB->v + fShortDV * fFracB;
+      #endif
+
+      fShortX  = PB->x + fShortDX * fFracB;
+      fShortZ  = fPBz  + fShortDZ * fFracB;
+
+      if (fLongX > fShortX)
+      {
+         fWSpan  = 1.0 / (fLongX - fShortX);
+
+         #if defined (__INTERP_G)
+         DeltaG  = FLT_TO_FXD((fLongG - fShortG) * fWSpan);
+         #endif
+
+         #if defined (__INTERP_ST)
+         fDeltaS = (fLongS - fShortS) * fWSpan;
+         fDeltaT = (fLongT - fShortT) * fWSpan;
+         #endif
+
+         #if defined (__INTERP_UV)
+         fDeltaU = (fLongU - fShortU) * fWSpan;
+         fDeltaV = (fLongV - fShortV) * fWSpan;
+         #endif
+
+         fDeltaZ = (fLongZ - fShortZ) * fWSpan;
+      }
+      else
+      {
+         fWSpan  = 1.0 / (fShortX - fLongX);
+
+         #if defined (__INTERP_G)
+         DeltaG  = FLT_TO_FXD((fShortG - fLongG) * fWSpan);
+         #endif
+
+         #if defined (__INTERP_ST)
+         fDeltaS = (fShortS - fLongS) * fWSpan;
+         fDeltaT = (fShortT - fLongT) * fWSpan;
+         #endif
+
+         #if defined (__INTERP_UV)
+         fDeltaU = (fShortU - fLongU) * fWSpan;
+         fDeltaV = (fShortV - fLongV) * fWSpan;
+         #endif
+
+         fDeltaZ = (fShortZ - fLongZ) * fWSpan;
+      }
+   }
+
+   if (fShortX < fLongX)
+   {
+      INNER_LOOP(iBotHeight, fShort, fLong);
+   }
+   else
+   {
+      INNER_LOOP(iBotHeight, fLong, fShort);
+   }
+}
+
+/*±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+  ±   [PERSP.TRI   ] - End Of File                                           ±
+  ±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±*/

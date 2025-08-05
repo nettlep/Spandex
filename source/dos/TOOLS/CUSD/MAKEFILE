@@ -1,0 +1,130 @@
+#€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
+#                                                                              €
+#                        Makefile for The CUsd Utility                         €
+#                                                                              €
+#€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€€
+
+.ERASE
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                              Conditional Rules                               ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+U_D = n     # Debug options?
+U_R = y     # Release flag?
+U_Z = n     # Z-Buffer flag?
+U_A = y     # ASM?
+U_B = y     # Use Borland's Assembler?
+COM = y     # Use PMode/W compression?
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                                Implicit Rules                                ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+.c.obj:
+        $(COMPILE)
+        @ECHO -------------------------------------------------------------------------------
+
+.asm.obj:
+        $(ASSEMBLE)
+        @ECHO -------------------------------------------------------------------------------
+
+.obj.exe:
+        WLINK @CUSD.LNK
+!ifeq U_D n
+        WSTRIP CUSD.EXE
+!endif
+!ifeq COM y
+        PMWLITE /C4 /SC:\WC\BINW\PMODEW.EXE CUSD.EXE
+!endif
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                          Options and optomizations                           ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+!ifeq U_D y
+!ifeq U_B y
+AOPTS = /mx /m5 /t /Zi
+!else
+AOPTS = /zq /w4 /d1
+!endif
+
+DOPTS = /d2
+!else
+!ifeq U_B y
+AOPTS = /mx /m5 /t
+!else
+AOPTS = /zq /w4
+!endif
+
+DOPTS = /oneatx /s 
+!endif
+
+!ifeq U_A y
+CFLAG = /dU_A
+AFLAG = /dU_A
+!else
+CFLAG = /dU_C
+AFLAG = /dU_C
+!endif
+
+!ifeq U_Z y
+C_BUF = /dU_Z
+A_BUF = /dU_Z
+!else
+C_BUF =
+A_BUF =
+!endif
+
+!ifeq U_R y
+ROPTS = /dU_R
+!else
+ROPTS =
+!endif
+
+COPTS = /I..\..\dev_kit /en /fp3 /4r /w4 /zq /zp $(DOPTS) $(C_BUF) $(CFLAG) $(ROPTS)
+
+HEADERS1 = $(DEV_KIT)\SPANDEX.H  $(DEV_KIT)\SDXDECL.H  $(DEV_KIT)\SDXDEFS.H
+HEADERS2 = $(DEV_KIT)\SDXEXTRN.H $(DEV_KIT)\SDXMACRO.H $(DEV_KIT)\SDXTYPES.H
+HEADERS3 = $(DEV_KIT)\SDXINT86.H
+HEADERS  = $(HEADERS1) $(HEADERS2) $(HEADERS3)
+
+DEV_KIT = ..\..\DEV_KIT
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                                Compile Methods                               ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+COMPILE = WCC386 $(COPTS) $[*
+
+!ifeq U_B y
+ASSEMBLE = TASM $(AOPTS) $(A_BUF) $(AFLAG) $[*
+!else
+ASSEMBLE = WASM $(AOPTS) $(A_BUF) $(AFLAG) $[*
+!endif
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                               EXE Dependencies                               ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+CUSD.EXE : CUSD.LNK
+CUSD.EXE : $(DEV_KIT)\spandex.lib
+CUSD.EXE : CUSD.OBJ
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                             Module Dependencies                              ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+CUSD.OBJ  : CUSD.C MAKEFILE $(HEADERS)

@@ -1,0 +1,89 @@
+
+
+             TODO -- things for YOU to do, not me! :)
+             ----------------------------------------
+
+Want to have fun learning?  Pick up a task, and take it on!  Be sure
+to e-mail midnight@grafix3d.dyn.ml.org to let him know.. so he can
+help prevent multiple people from doing overlapping work.
+
+-------------------
+HIGH PRIORITY:
+-------------------
+
+*   Add support for the free compilers (like gasp and gcc/gpp) rather
+    than requiring TASM and Watcom
+*   Add stuff to the todo list (got any ideas?)
+
+-------------------
+MED PRIORITY:
+-------------------
+
+*   Port polys.c to ASM for top-speed performance
+*   Port to Linux and other Unices
+*   Port to X
+*   Port to Windows95/NT (this should be REAL easy)
+*   Add VESA 2.0 support (this should be REAL easy)
+
+-------------------
+LOW PRIORITY:
+-------------------
+
+*   Support for 3D hardware (via any specific libraries like Glide)
+*   Support for 3D hardware (via OpenGL)
+*   Support for 3D hardware (via Direct3D)
+*   Support for DirectDraw
+*   Port to C++ (yeah.. that's a big job...)
+
+*   Arbitrary texture sizes?
+*   Add 2D picking
+*   Z-buffers
+*   S-buffers
+*   Need to document SPDXCopyToScreenClipped
+*   Need to document SPDXSetTri
+*   Need to document SPDXGetTri
+*   Compressed tga file support
+*   JPG support
+*   PNG support
+
+*   Lense Flares
+*   Composite mapping (mixing reflections with tmapping)
+*   Update the asc2usd converter for all new changes
+*   Fix the funky pixel in the lower-right corner of the screen...
+*   Parallel projections
+*   Cleanup the 2D stuff
+*   Fix fedit -- uses old routines
+*   Need a SPDXVerifyMode to check for availability of a mode
+*   SPDXGet/SetLightInfluence -- code to manage light influence area
+*   Add Infinate Lights
+*   Add Directional Lights
+*   Add Spot Lights
+*   STF Hierarchy
+*   Alpha channel rendering
+*   Add TYPEable header to compressed USD and MAP files
+*   In showmap, look for header and display compressed maps, too
+*   Create a decompressor for usd and map files
+*   Add the ability for the phong pre-calcs to have a specific direction.
+      - by adding a call to "SPDXSetPhongLight"
+      - use this call in globals routine.
+      - also, look at what variables we CAN use in phong (i.e. ambient? others?)
+*   Bounding Boxes:
+      - Add bounding boxes to object structures
+      - Add bounding boxes to lights for limits of light
+*   Look into changing these on the fly:
+      - Resolution
+      - Maps
+      - Palette
+*   Add gamma correction for dark monitors...
+*   Keyboard/Joystick interface?
+*   Line collision (ray intersects poly)
+*   Distance attenuation (from eye)
+*   Distance attenuation (from lights)
+
+-------------------
+BUGS:
+-------------------
+
+Saving to TGA files is buggy.
+
+- PDN

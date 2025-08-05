@@ -1,0 +1,8 @@
+
+
+Spandex documentation:
+
+DOC - word 7.0 format
+RTF - rich text format
+TXT - text format (the export didn't go too smooth, I recommend
+      using the RTF file).

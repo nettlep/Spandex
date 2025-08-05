@@ -1,0 +1,64 @@
+
+I've just finished the first-pass port to linux (with some help from Matthew Wilhelm.)
+
+First off, there are a few bugs.  I'm pretty sure that the de-compression for cusd/cbum/cmap
+and GIF files is broken.
+
+This may be fine and dandy.. I'm not up on the legal issues of the LZW patent prolems that
+were introduced into everybody's lives when Unisys decided to protect their well-hidden
+patent.  I'm not sure how it works for free software.  If it's free, and we're allowed
+to use it then, we'll do so.  Otherwise, lets rip that stuff out of there before somebody
+gets sued (like me, for example).  To top that all off, the source originated from a book
+was mucked with, then put on the net, then I grabbed it and mucked with it, so it's a bit
+of a mess. (One might think that I should write my own compression routines for GIF files,
+but I'm a 3D guy, not a compression guy, and when I had the choice, I took the easy route
+so I could concentrate on the cooler 3D issues that needed to be done.)
+
+The entire system requires Intel memory arrangement to work (this is the one thing I didn't
+feel like making portable when I originally wrote it -- call me lazy, but that's the way
+it is).
+
+I never got the shared libraries to work (probably because I know less about them than a
+a bowl of mud does).
+
+I would like to see if this thing will still compile in DOS.
+
+I don't think the stuffer program even works.
+
+The graphics for X only support 15/16/24/32 bit modes, and the 15/32-bit modes
+haven't been tested (don't have the right hardware to test with.)  No 8-bit
+support is in.
+
+The X port is just barely getting srarted, it needs a LOT of work.
+
+It's very slow due to the lack of assembly and the hacks that you'll find to replace
+the DOS assembly in sdxmisc.c.
+
+To switch operating systems, you should ONLY have to change the #defines in config.h
+
+Any and everything that has to do with file formats should be double-checked (and even
+hopefully made truely portable to non-intel architectures, even for the sacrifice of speed).
+
+It should work with optimizations on, but I haven't tried that yet.
+
+I know the PCX reader/writer has bugs in it with odd-sized files.
+
+Portability wise, I'm not so sure that leaving in the mouse or VESA routines is such a
+smart idea.  At least, not in the Spandex library itself.  It's my opinion that the spandex
+lib should be JUST spandex, the renderer and everything to do with the rendering, and
+nothing for interfaces should be in there (i.e. mouse, VESA, etc.)
+
+The Virutal Screen routines should make it a total breeze to get it ported to just about
+any kind of device, and it looks as though it's ready for RGB rendering any day now.
+
+                                      *HINT*HINT*
+
+One other thing.. with my busy schedule I haven't got time to pick up and learn all about
+GNU licensing, and what I have to do to make Spandex GNU-able.  All the files I ever see
+seem to have a certain format structure for their file headers and such, with a few
+accompanying files (COPYING, LICENSE, etc.)  Is there a GNU package someplace that I could
+pick up?  Or if somebody else is willing to GNU-ize Spandex, it would be much appreciated.
+
+OK, I think that's it.  I can't think of anything else.
+
+- Paul

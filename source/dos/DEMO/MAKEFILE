@@ -1,0 +1,155 @@
+#ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+#                                                                              Û
+#                        Makefile for The SPANDEX Demo                         Û
+#                                                                              Û
+#ÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛÛ
+
+.ERASE
+.EXTENSIONS:
+.EXTENSIONS: .exe .exp .lib .stf .obj .asm .c .cpp .h .map .usd .gif .u
+
+#
+# *** MODIFY THESE ***
+#
+
+DEV_KIT    = ..\DEV_KIT
+PMODE_STUB = C:\WC\BINW\PMODEW.EXE
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                              Conditional Rules                               ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+U_D = n     # Debug options?
+U_R = y     # Release flag?
+U_P = y     # Perspective Correct flag?
+COM = n     # Use PMode/W compression?
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                                Implicit Rules                                ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+.cpp.obj:
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO  Compiling $[*.cpp
+        $(PP_COMPILE)
+
+.c.obj:
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO  Compiling $[*.c
+        $(COMPILE)
+
+.asm.obj:
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO Assembling $[*.asm
+        $(ASSEMBLE)
+
+.obj.exp:
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO    Linking $[*.exe
+        WLINK LIBPATH $(DEV_KIT) @DEMO.LNK
+!ifeq U_D n
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO Stripping...
+        WSTRIP /q DEMO.EXP
+!endif
+
+!ifeq COM y
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO Compressing...
+        PMWLITE /C4 /S$(PMODE_STUB) DEMO.EXP
+!endif
+
+.exp.exe:
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO Creating single EXE
+!ifeq U_D n
+        COPY /b DEMO.EXP + DEMO.STF DEMO.EXE > NUL
+!else
+        COPY DEMO.EXP DEMO.EXE
+!endif
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                          Options and optomizations                           ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+!ifeq U_D y
+DOPTS = /d2 /D__DEBUG__
+!else
+DOPTS = /oneatx /s 
+!endif
+
+!ifeq U_P y
+PERSP = /dU_P
+!else
+PERSP =
+!endif
+
+COPTS = /I$(DEV_KIT) /en /fpi /fp5 /5r /w4 /zq /zp $(DOPTS) $(PERSP) $(C_BUF) $(CFLAG) $(ROPTS)
+
+HEADERS1 = $(DEV_KIT)\SPANDEX.H  $(DEV_KIT)\SDXDECL.H  $(DEV_KIT)\SDXDEFS.H
+HEADERS2 = $(DEV_KIT)\SDXEXTRN.H $(DEV_KIT)\SDXMACRO.H $(DEV_KIT)\SDXTYPES.H
+HEADERS3 = $(DEV_KIT)\SDXINT86.H
+HEADERS  = $(HEADERS1) $(HEADERS2) $(HEADERS3)
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                                Compile Methods                               ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+MMAP    = MAKEMAP $@ *.TGA -S0.75 -I0.4
+#MMAP    = MAKEMAP $@ *.TGA
+
+CMAP    = CMAP $@
+
+CUSD    = CUSD $@
+
+STUFFIT = STUFFER $@ $<
+
+COMPILE = WCC386 $(COPTS) $[*
+
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+#                                                                              ±
+#                               EXE Dependencies                               ±
+#                                                                              ±
+#±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±±
+
+DEMO.EXE : DEMO.EXP
+DEMO.EXE : DEMO.STF
+DEMO.EXE : MAKEFILE
+
+DEMO.STF : DEMO.MAP
+DEMO.STF : DEMO.USD
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO Stuffing...
+        $(STUFFIT)
+
+DEMO.EXP : DEMO.LNK
+DEMO.EXP : $(DEV_KIT)\SPANDEX.LIB
+DEMO.EXP : DEMO.OBJ
+DEMO.EXP : MAKEFILE
+
+DEMO.USD : DEMO.U
+DEMO.USD : MAKEFILE
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO Making USD...
+        COPY DEMO.U DEMO.USD
+        $(CUSD)
+
+DEMO.MAP : *.TGA
+DEMO.MAP : MAKEFILE
+        @ECHO -------------------------------------------------------------------------------
+        @ECHO Making MAP...
+        $(MMAP)
+        $(CMAP)
+
+DEMO.OBJ : DEMO.C
+DEMO.OBJ : DEMO.H
+DEMO.OBJ : $(HEADERS)
+DEMO.OBJ : MAKEFILE
